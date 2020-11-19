@@ -1,0 +1,138 @@
+library (MASS)
+beta0 <− matrix(c(1,0.8,0.6,0,0,0),ncol = 1,nrow = 6)# the correct coef #step 1 generate data
+data <− function(n){ #the function to generate data
+  x = mvrnorm(n,rep(0,6),diag(as.vector(c(1,1,1,1,1,1))))
+  #generate data that is subject to the multi−normal distribution 
+  e = rnorm(n,0,2)
+  return(list(e=e,x=x)) #the result is shown in a list
+}
+#step2 estimate&select
+est <− function(x,y){
+  return(b_hat = solve(t(x)%∗%x)%∗%t(x)%∗%y) #estimate the coef 
+}
+# select by aic and bic
+aicbic <− function(n,b){ #use n and b as variables
+  aic = matrix(NA,nrow = 1,ncol = 3) # in order to restore the value of aic and bic 
+  bic = matrix(NA,nrow = 1,ncol = 3)
+  x = data(n)$x ;e = data(n)$e
+  y = x%∗%b + e #calculate y
+for(i in 1:6)
+{
+#using the best subset method to find out the best variable combination,
+#on the basis of the smallest aic and bic
+  d = t(combn(6,i))
+  for ( j in 1:nrow(d)){
+    h=d[j,]
+    x1 = x[,c(h)] #one of the subsets
+    b2 = matrix(b[c(h),],ncol = 1) # the coef of the subset
+    b22 = est(x1,y) #the new coef
+    y1hat = x1%∗%b22 #estimate y hat
+    sse1 = t(y−y1hat)%∗%(y−y1hat) # calculate SSe 
+    aic1 = 2∗i+n∗log(sse1/n) #calculate aic and bic 
+    bic1 = log(sse1/n)+(i/n)∗log(n)
+    f1 = matrix(c(aic1,i,j),nrow = 1,ncol = 3)
+    f2 = matrix(c(bic1,i,j),nrow = 1,ncol = 3)
+    bic = rbind(f2,bic) #all the results
+    aic = rbind(f1,aic)
+    }}
+  #sort the aic by the decreasing order,
+  #the first row of the matrix is what we want 
+  m1 = aic[order(aic[,1],decreasing = F),]
+  m2 = bic[order(bic[,1],decreasing = F),]
+  d1 = t(combn(6,m1[1,2])) 
+  d2 = t(combn(6,m2[1,2])) 
+  x_aic=x[,d1[m1[1,3],]]
+  x_bic=x[,d2[m2[1,3],]]
+  b_aic = c(0,0,0,0,0,0)
+  b bic = c(0,0,0,0,0,0)
+  b_aic[d1[m1[1,3],]] = est(x aic,y) # the best beta 
+  b_bic[d2[m2[1,3],]] = est(x bic,y)
+  #the final result of the selection
+  #if the variable isn ’t selected , the coef is 0
+  b_aic = matrix(b_aic , nrow = 1) 
+  b_bic = matrix(b_bic, nrow = 1)
+  return(list(b aic=b aic,b bic=b bic))} 
+h1<−matrix(c(0,0,0,0,0,0),ncol = 6, nrow = 1) 
+h2<−matrix(c(0,0,0,0,0,0),ncol = 6, nrow = 1) 
+n=100;n=200
+for (i in 1:1000) { #repeat the procedure for 1000 times 
+  aic <− aicbic(n,beta0)$b aic
+  bic <− aicbic(n,beta0)$b bic
+  h1 <− rbind(h1,aic)
+  h2 <− rbind(h2,bic)}
+aic_correct = (sum(h1[,4:6]==c(0,0,0))−1)/1000 #the final result of aic , bic 
+aic_incorrect = (sum(h1[,1:3]==c(0,0,0))−1)/1000
+bic_correct = (sum(h2[,4:6]==c(0,0,0))−1)/1000
+bic_incorrect = (sum(h2[,1:3]==c(0,0,0))−1)/1000
+##############################################################
+#LQA Algorithms
+#generate the sigma function which will be used in the LQA Algorithms
+sigma <− function(lambda,b,adp,x,y){ 
+  bsig <− c(0,0,0,0,0,0) 
+  for (i in 1:6) {
+    if (adp == 1){ #judge if we use the adaptive lasso method 
+      if(abs(b[i,1])<0.001){bsig[i] <− 10000}
+      else{bsig[i] = (1/abs(est(x,y))[i ,1])/abs(b[i ,1])} #set the weight
+    }else{ if(abs(b[i,1])<0.001){ 
+      bsig[i] <− 10000
+      }else{bsig[i] = 1/abs(b[i,1])}}}
+sigma <− lambda∗diag(bsig ,nrow = 6, ncol = 6) 
+ return(sigma)}
+LQA<− function(n,lambda,beta0,x,y,adp){# generate the LQA function 
+  m <− 1 #the initial value of the iteration
+  b1 <− beta0
+  while (m>0.0001){ #the condition of the iteration
+    b2 <− b1
+    b1 <− b2−solve(2∗t(x)%∗%x+n∗sigma(lambda,b2,adp,x,y))
+    %∗%(( −2) ∗ t ( x )%∗%( y−x%∗%b2)+n∗ sigma ( lambda , b2 , adp , x , y )%∗%b2 ) 
+    #calculate the new coef
+    for (k in 1:6){
+      if(b1[k,1]<0.0001) b1[k,1]<−0 #let the coef which is small enough be 0
+}
+    #calculate the distance between the new and old coef to jugde whether stop
+    m<− sqrt(t(b1−b2)}%∗%(b1−b2)) 
+    return(b1)}
+GCV <− function(n,lambda,b,y,x,adp){ # generate the GCV function to select the bes 
+  u<−t(x)%∗%x+n∗sigma(n,b,adp,x,y)
+  trace_lamda<−sum(diag(x%∗%solve(u)%∗%t(x))) 
+  gcv<−t(y−x%∗%b)%∗%(y−x%∗%b)/((1−trace lamda/n)ˆ2) #calculate GCV 
+  return(gcv)}
+
+lasso_correct <− c()
+adplasso_correct <− c()
+lasso_incorrect <−c()
+adplasso_incorrect <− c()
+for (i in 1:1000){ #repeat the procedure for 1000 times
+b_lasso <− matrix(nrow = 100, ncol = 8)
+b_adplasso <− matrix(nrow = 100,ncol = 8) 
+x<−data(n)$x
+y <− x%∗%beta0 + data(n)$e 
+b0<−est(x,y);
+  for (lambda in seq (0.01 ,1 ,0.01)) { #set lambda and select the best 
+    lasso <−LQA(n,lambda,beta0,x,y,0)
+    adp_lasso <−LQA(n,lambda,beta0,x,y,1)
+    b_lasso[100∗lambda,][1:6]<−lasso
+    b_adplasso[100∗lambda,][1:6]<−adp_lasso
+    b_lasso[100∗lambda,][7:8]=c(GCV(n,lambda,lasso,y,x,0),lambda)
+    b_adplasso[100∗lambda,][7:8]=c(GCV(n,lambda,adp lasso,y,x,1),lambda) } 
+best_lasso<−b_lasso [which.min(b_lasso[ ,7]) ,]
+best_adplasso<−b_adplasso[which.min(b_adplasso[ ,7]) ,]
+cor <− sum(best_lasso[4:6]==c(0,0,0))
+adpcor <− sum(best_adplasso[4:6]==c(0 ,0 ,0))
+incor <− sum(best_lasso[1:3]==c(0,0,0))
+adpincor <− sum(best_adplasso[1:3]==c(0 ,0 ,0))
+lasso_correct <− c(cor , lasso_correct )
+adplasso_correct<− c(adpcor , adplasso_correct )
+lasso_incorrect<−c(incor ,lasso_incorrect)
+adplasso_incorrect <− c(adpincor ,adplasso_incorrect)
+}
+#final result
+lasso_correct <− sum(lasso_correct)/1000
+lasso_incorrect<− sum(lasso_incorrect)/1000 
+adplasso_correct <− sum(adplasso_correct)/1000 
+adplasso_incorrect <− sum(adplasso_incorrect)/1000
+    
+    
+    
+    
+
