@@ -1,0 +1,449 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jun  17 22:55:33 2020
+
+@author: caoyanan
+"""
+
+import scipy.integrate as spi
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import optimize
+from scipy.integrate import ode
+
+#%% SEIR(D)模型
+
+# N为人群总数
+N = 9000000
+
+beta1 = 0.045 # 病毒从感染者传染给健康者的概率
+beta2 = 0.045 # 病毒从潜伏者传染给健康者的概率
+
+alpha = 0.1 # 潜伏者转化为感染者的概率
+
+zeta = 0.09 # 患者康复的概率
+eta = 0.01 # 患者死亡的概率
+
+r1 = 10 # 感染者接触的人数
+r2 = 20 # 潜伏者接触的人数
+
+Te = 14 # Te为疾病潜伏期
+
+# I_0为感染者的初始人数
+I_0 = 1
+# E_0为潜伏者的初始人数
+E_0 = 0
+# R_0为治愈者的初始人数
+R_0 = 0
+# D_0为治愈者的初始人数
+D_0 = 0
+# S_0为易感者的初始人数
+S_0 = N - I_0 - E_0 - R_0 - D_0
+# T为传播时间
+T = 150
+
+# INI为初始状态下的数组
+INI = (S_0, E_0, I_0, R_0, D_0)
+arg = N, beta1, beta2, alpha, zeta, eta,r1,r2
+
+def funcSEIRD(inivalue, t, N, beta1, beta2, alpha, zeta, eta, r1,r2):
+    Y = np.zeros(5)
+    X = inivalue
+    # 健康/易感个体变化
+    Y[0] = - (beta1 * r1 * X[0] * X[2] + beta2 * r2 * X[0] * X[1]) / N
+    # 潜伏个体变化
+    Y[1] = (beta1 * r1 * X[0] * X[2] + beta2 * r2 * X[0] * X[1]) / N - X[1] * alpha
+    # 感染个体变化
+    Y[2] = X[1] * alpha - zeta * X[2] - eta * X[2]
+    # 治愈个体变化
+    Y[3] = zeta * X[2]
+    # 死亡个体变化
+    Y[4] = eta * X[2]
+    return Y
+
+T_range = np.arange(0,T)
+
+RES = spi.odeint(funcSEIRD,INI,T_range, arg)
+print(max(RES[:,1]))
+
+plt.plot(RES[:,0], color = 'darkblue', label = 'Susceptible')
+plt.plot(RES[:,1], color = 'orange', label = 'Exposed')
+plt.plot(RES[:,2], color = 'red', label = 'Infection')
+plt.plot(RES[:,3], color = 'green', label = 'Recovery')
+plt.plot(RES[:,4], color = 'yellow', label = 'Death')
+
+plt.title('SEIR(D) Model')
+plt.legend()
+plt.xlabel('Day')
+plt.ylabel('Number')
+plt.show()
+
+#%% 最终成为常见流行病 SEIS模型
+
+# N为人群总数
+N = 9000000
+
+m = 0.5
+
+beta1 = 0.045 # 病毒从感染者传染给健康者的概率
+beta2 = 0.045 # 病毒从潜伏者传染给健康者的概率
+
+alpha = 0.1 # 潜伏者转化为感染者的概率
+
+zeta = 0.09 # 患者康复的概率
+eta = 0.0001 # 患者死亡的概率
+
+r1 = 10 # 感染者接触的人数
+r2 = 20 # 潜伏者接触的人数
+
+Te = 14 # Te为疾病潜伏期
+
+# I_0为感染者的初始人数
+I_0 = 1
+# E_0为潜伏者的初始人数
+E_0 = 0
+# R_0为治愈者的初始人数
+R_0 = 0
+# D_0为治愈者的初始人数
+D_0 = 0
+# S_0为易感者的初始人数
+S_0 = N - I_0 - E_0 - R_0 - D_0
+# T为传播时间
+T = 500
+
+# INI为初始状态下的数组
+INI = (S_0, E_0, I_0, R_0, D_0)
+arg = N, beta1, beta2, alpha, zeta, eta, r1, r2
+
+def funcSEIRD(inivalue, t, N, beta1, beta2, alpha, zeta, eta, r1, r2):
+    Y = np.zeros(5)
+    X = inivalue
+    # 健康/易感个体变化
+    Y[0] = - (r1 * beta1 * X[0] * X[2] + r2 * beta2 * X[0] * X[1]) / N + m * X[3]
+    # 潜伏个体变化
+    Y[1] = (r1 * beta1 * X[0] * X[2] + r2 * beta2 * X[0] * X[1]) / N - X[1] * alpha
+    # 感染个体变化
+    Y[2] = X[1] * alpha - zeta * X[2] - eta * X[2]
+    # 治愈个体变化
+    Y[3] = zeta * X[2] - X[3] * m
+    # 死亡个体变化
+    Y[4] = eta * X[2]
+    return Y
+
+T_range = np.arange(0,T)
+
+RESs = spi.odeint(funcSEIRD,INI,T_range, arg)
+
+
+plt.plot(RESs[:,0], color = 'darkblue', label = 'Susceptible')
+plt.plot(RESs[:,1], color = 'orange', label = 'Exposed')
+plt.plot(RESs[:,2], color = 'red', label = 'Infection')
+plt.plot(RESs[:,3], color = 'green', label = 'Recovery')
+plt.plot(RESs[:,4], color = 'yellow', label = 'Death')
+
+plt.title('SEIR(D) Model')
+plt.legend()
+plt.xlabel('Day')
+plt.ylabel('Number')
+plt.show()
+
+#%% 参数优化
+
+def funcLoss(p):
+    beta1, beta2, alpha, zeta, eta = p
+    def funcSEIRD(inivalue,T_range,beta1, beta2, alpha, zeta, eta):
+        S, E, I, R, D= inivalue.tolist()
+        N = 9000000
+        r1 = 10
+        r2 = 20
+        return - (beta1 * r1 * S * I + beta2 * r2 * S * E) / N,(beta1 * r1 * S * I + beta2 * r2 * S * E) / N - E * alpha,E * alpha - zeta * I - eta * I,zeta * I,eta * I
+    T=150
+    T_range = np.array(range(T))
+    RESo = spi.odeint(funcSEIRD, (8999999, 0, 1, 0, 0), T_range, args=(p[0],p[1],p[2],p[3],p[4]))
+    print(RESo)
+    return np.sum(np.abs(RESo[:,2] - RES[:,2]))
+
+kwargs = {"method":"L-BFGS-B","bounds":[(0, 1), (0, 1), (0, 1), (0, 1), (0, 1)]}
+
+RES4= optimize.basinhopping(funcLoss, (1,1,1,1,1), minimizer_kwargs=kwargs)
+
+print(RES4.x, RES4.fun)
+
+
+#%% 加入扰动项之后的参数优化
+
+RESr = RES[:,2] + 2 * np.random.randn(len(RES[:,2]))
+
+def funcLoss(p):
+    beta1, beta2, alpha, zeta, eta = p
+    def funcSEIRD(inivalue,T_range,beta1, beta2, alpha, zeta, eta):
+        S, E, I, R, D= inivalue.tolist()
+        N = 9000000
+        r1 = 10
+        r2 = 20
+        return - (beta1 * r1 * S * I + beta2 * r2 * S * E) / N,(beta1 * r1 * S * I + beta2 * r2 * S * E) / N - E * alpha,E * alpha - zeta * I - eta * I,zeta * I,eta * I
+    T=150
+    T_range = np.array(range(T))
+    RESo = spi.odeint(funcSEIRD, (8999999, 0, 1, 0, 0), T_range, args=(p[0],p[1],p[2],p[3],p[4]))
+    print(RESo)
+    return np.sum(np.abs(RESo[:,2] - RESr))
+
+kwargs = {"method":"L-BFGS-B","bounds":[(0, 1), (0, 1), (0, 1), (0, 1), (0, 1)],}
+
+RES4= optimize.basinhopping(funcLoss, (1,1,1,1,1), minimizer_kwargs=kwargs)
+
+print(RES4.x, RES4.fun)
+#%% 作图
+
+arg1 = RES4.x[0], RES4.x[1], RES4.x[2], RES4.x[3], RES4.x[4]
+INI = (S_0, E_0, I_0, R_0, D_0)
+def funcSEIRD(inivalue, t, beta1, beta2, alpha, zeta, eta):
+    N = 9000000
+    r1 = 10
+    r2 = 20
+    Y = np.zeros(5)
+    X = inivalue
+    # 健康/易感个体变化
+    Y[0] = - (beta1 * r1 * X[0] * X[2] + beta2 * r2 * X[0] * X[1]) / N
+    # 潜伏个体变化
+    Y[1] = (beta1 * r1 * X[0] * X[2] + beta2 * r2 * X[0] * X[1]) / N - X[1] * alpha
+    # 感染个体变化
+    Y[2] = X[1] * alpha - zeta * X[2] - eta * X[2]
+    # 治愈个体变化
+    Y[3] = zeta * X[2]
+    # 死亡个体变化
+    Y[4] = eta * X[2]
+    return Y
+
+T_range = np.arange(0,T)
+
+RESo = spi.odeint(funcSEIRD,INI,T_range, arg1)
+
+plt.plot(T_range, RESr, ".", color = 'orange',label="Data with residual")
+plt.plot(T_range, RES[:,2],color = 'red',label="Real data")
+plt.plot(T_range, RESo[:,2], color = 'green', label="Fitting data")
+plt.legend(loc="upper right");
+
+#%% SEIQR模型
+
+# N为人群总数
+N = 9000000
+
+beta1 = 0.045 # 病毒从感染者传染给健康者的概率
+beta2 = 0.045 # 病毒从潜伏者传染给健康者的概率
+
+alpha = 0.1 # 潜伏者转化为感染者的概率
+
+zeta1 = 0.09 # 未被隔离患者康复的概率
+zeta2 = 0.11 # 被隔离后患者康复的概率
+
+gamma = 0.01 # 患者被隔离的概率
+
+eta1 = 0.01# 未被隔离患者死亡的概率
+eta2 = 0.009 # 被隔离后患者死亡的概率
+r1 = 10 # 感染者接触的人数
+r2 = 20 # 潜伏者介乎的人数
+
+Te = 14 # Te为疾病潜伏期
+
+# I_0为感染者的初始人数
+I_0 = 1
+# E_0为潜伏者的初始人数
+E_0 = 0
+# Q_0为隔离者的初始人数
+Q_0 = 0
+# R_0为治愈者的初始人数
+R_0 = 0
+# D_0为治愈者的初始人数
+D_0 = 0
+# S_0为易感者的初始人数
+S_0 = N - I_0 - E_0 - R_0 - D_0
+# T为传播时间
+T = 150
+
+class SEIQRDode(object):
+
+    def __init__(self, N, beta1, beta2, alpha, zeta1, zeta2, gamma,
+                 eta1, eta2, r1, r2):
+        self.N, self.beta1, self.beta2, self.alpha, self.zeta1, self.zeta2, \
+        self.gamma, self.eta1, self.eta2, self.r1, self.r2 = N, beta1, \
+        beta2, alpha, zeta1, zeta2, gamma, eta1, eta2, r1, r2\
+
+    def f(self, t, inivalue):
+        #Y = np.zeros(6)
+        X = inivalue
+        # 健康/易感个体变化
+        dS = - (r1 * beta1 * X[0] * X[2] + r2 * beta2 * X[0] * X[1]) / N
+        # 潜伏个体变化
+        dE = (r1 * beta1 * X[0] * X[2] + r2 * beta2 * X[0] * X[1]) / N - X[1] * alpha
+        # 感染个体变化 
+        dI = X[1] * alpha - zeta1 * X[2] - eta1 * X[2] - gamma * X[2]
+        # 隔离个体变化
+        dQ = gamma * X[2] - zeta2 * X[3] - eta2 * X[3]
+        # 治愈个体变化
+        dR = zeta1 * X[2] + zeta2 * X[3]
+        # 死亡个体变化
+        dD = eta1 * X[2] + eta2 * X[3]
+        return [dS,dE,dI,dQ,dR,dD]
+
+system = SEIQRDode(N=N, beta1=beta1, beta2=beta2, alpha=alpha, zeta1=zeta1, zeta2=zeta2, gamma=gamma,
+                 eta1=eta1, eta2=eta2, r1=r1, r2=r2)
+INI = (S_0, E_0, I_0, Q_0, R_0, D_0)
+dt = 1
+
+r = ode(system.f)
+
+r.set_integrator('vode', method='bdf')
+
+r.set_initial_value(INI, 0)
+
+t = [0]
+RES2 = [INI]
+# 以dt为时间间隔对系统进行积分
+while r.successful() and r.t + dt < T:
+    r.integrate(r.t + dt)
+    t.append(r.t)
+    RES2.append(r.y)
+
+RES2 = np.array(RES2)
+
+
+plt.plot(RES2[:,0], color = 'darkblue', label = 'Susceptible')
+plt.plot(RES2[:,1], color = 'orange', label = 'Exposed')
+plt.plot(RES2[:,2], color = 'red', label = 'Infection')
+plt.plot(RES2[:,3], color = 'gray', label = 'Quarantine')
+plt.plot(RES2[:,4], color = 'green', label = 'Recovery')
+plt.plot(RES2[:,5], color = 'yellow', label = 'Death')
+
+
+plt.title('SEIQR(D) Model')
+plt.legend()
+plt.xlabel('Day')
+plt.ylabel('Number')
+plt.show()
+
+#%% PID控制器
+
+class PID(object):
+
+    def __init__(self, kp, ki, kd, dt):
+        self.kp, self.ki, self.kd, self.dt = kp, ki, kd, dt
+        self.last_error = None
+        self.status = 0.0
+
+    # 更新PID控制器，输入为当前时刻的误差，输出为PID三项之和
+    # 当前状态status和上次的误差last_error都是成员变量，要在这里更新
+    def update(self, error):
+        p = self.kp * error
+        i = self.ki * self.status
+        if self.last_error is None:
+            d = 0.0
+        else:
+            d = self.kd * (error - self.last_error) / self.dt
+        self.status += error * self.dt
+        self.last_error = error
+        return p + i + d
+
+def pid_control_system(kp, ki, kd, dt, target=0.0):
+    system = SEIQRDode(N=N, beta1=beta1, beta2=beta2, alpha=alpha, zeta1=zeta1, zeta2=zeta2, gamma=0.0,
+                 eta1=eta1, eta2=eta2, r1=r1, r2=r2)
+    pid = PID(kp, ki, kd, dt)
+    INI = (S_0, E_0, I_0, Q_0, R_0, D_0)
+
+    r = ode(system.f)
+    r.set_integrator('vode', method='bdf')
+    r.set_initial_value(INI, 0)
+
+    t = [0]
+    RES = [INI]
+    gamma_arr = [0]
+
+    while r.successful() and r.t + dt < 150.0:
+        r.integrate(r.t + dt)
+        err = r.y[2] - target # 计算目标人数与当前人数的差
+        gamma = pid.update(err)    # 使用该误差更新PID控制器，得到控制力F
+        gamma = np.arctan(gamma)/(2*np.pi)+0.75
+        system.gamma = gamma           # 更新系统中的隔离系数gamma
+        t.append(r.t)
+        RES.append(r.y)
+        gamma_arr.append(gamma)
+    #print(t,gamma_arr)
+
+    RES = np.array(RES)
+    t = np.array(t)
+    gamma_arr = np.array(gamma_arr)
+    
+    return t, gamma_arr, RES
+
+#print(RES3[40])
+print(RES2[40])
+
+def funcSEIQRD(inivalue, t, N, beta1, beta2, alpha, zeta1, zeta2, gamma,
+                 eta1, eta2, r1, r2):
+    Y = np.zeros(6)
+    X = inivalue
+    # 健康/易感个体变化
+    Y[0] = - (r1 * beta1 * X[0] * X[2] + r2 * beta2 * X[0] * X[1]) / N
+    # 潜伏个体变化
+    Y[1] = (r1 * beta1 * X[0] * X[2] + r2 * beta2 * X[0] * X[1]) / N - X[1] * alpha
+    # 感染个体变化 
+    Y[2] = X[1] * alpha - zeta1 * X[2] - eta1 * X[2] - gamma * X[2]
+    # 隔离个体变化
+    Y[3] = gamma * X[2] - zeta2 * X[3] - eta2 * X[3]
+    # 治愈个体变化
+    Y[4] = zeta1 * X[2] + zeta2 * X[3]
+    # 死亡个体变化
+    Y[5] = eta1 * X[2] + eta2 * X[3]
+    return Y
+
+T_range = np.arange(0,T)
+
+t, gamma_arr, RES = pid_control_system(10, 10, 1, 1)
+print(u"隔离系数的终值:", gamma_arr[-1])
+
+arg1 = N, beta1, beta2, alpha, zeta1, zeta2, gamma_arr[-1], eta1, eta2, r1, r2
+RES = spi.odeint(funcSEIQRD, INI, T_range, arg1)
+
+fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(6, 6))
+ax1.plot(t, RES[:, 2], label='Infection', color = 'red')
+ax1.legend(loc="best")
+ax2.plot(t, RES[:, 0], label='Suspectible', color = 'darkblue')
+ax2.legend(loc="best")
+ax2.plot(t, RES[:, 1], label='Exposed', color = 'orange')
+ax2.legend(loc="best")
+ax2.plot(t, RES[:, 3], label='Quarantine', color = 'gray')
+ax2.legend(loc="best")
+ax2.plot(t, RES[:, 4], label='Recovery', color = 'green')
+ax2.legend(loc="best")
+ax2.plot(t, RES[:, 5], label='Death',color = 'yellow')
+ax2.legend(loc="best")
+ax3.plot(t, gamma_arr, label='Quarantine Coefficient')
+ax3.legend(loc="best")
+
+#%% PID优化
+
+from scipy import optimize
+
+def eval_func(k):
+    kp, ki, kd = k
+    t, gamma_arr, RES = pid_control_system(kp, ki, kd, 1)
+    return np.sum(np.abs(RES2[:, 2][-1] - 0.0))
+
+kwargs = {"method":"L-BFGS-B", 
+ "bounds":[(10, 200), (10, 100), (1, 100)]}
+
+opt_k = optimize.basinhopping(eval_func, (1, 1, 1), 
+                               niter=10, 
+                               minimizer_kwargs=kwargs)
+print('优化后PID值：', opt_k.x)
+
+kp, ki, kd = opt_k.x
+t, F_arr, result = pid_control_system(kp, ki, kd, 1)
+print(u"隔离系数的终值:", gamma_arr[-1])
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 4))
+ax1.plot(t, RES[:, 2], label='Infection', color = 'red')
+ax1.legend(loc="best")
+ax2.plot(t, gamma_arr, label='Quarantine Coefficient')
+ax2.legend(loc="best")
